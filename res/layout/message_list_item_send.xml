@@ -23,6 +23,7 @@
     android:id="@+id/msg_list_item_send"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="#00000000"
     android:orientation="horizontal">
 
     <LinearLayout android:id="@+id/mms_layout_view_parent"
@@ -38,7 +39,7 @@
             <view xmlns:android="http://schemas.android.com/apk/res/android"
                 class="com.android.mms.ui.QuickContactDivot"
                 android:id="@+id/avatar"
-                position="left_upper"
+                position="left_middle"
                 android:layout_alignParentRight="true"
                 android:layout_width="@dimen/avatar_width_height"
                 android:layout_height="@dimen/avatar_width_height" />
@@ -63,7 +64,7 @@
                     android:linksClickable="false"
                     android:gravity="right"
                     android:textAppearance="?android:attr/textAppearanceSmall"
-                    android:textColor="#ff000000"
+                    android:textColor="@android:color/white"
                     android:textSize="16sp" />
 
                 <LinearLayout
