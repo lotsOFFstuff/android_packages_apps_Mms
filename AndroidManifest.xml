@@ -148,11 +148,11 @@
 
         <activity android:name=".ui.DeliveryReportActivity"
             android:label="@string/delivery_report_activity"
-            android:theme="@android:style/Theme.Holo.Dialog">
+            android:theme="@android:style/Theme.Dialog">
         </activity>
 
         <activity android:name=".ui.WarnOfStorageLimitsActivity"
-                android:theme="@android:style/Theme.Holo.Dialog"
+                android:theme="@android:style/Theme.Dialog"
                 android:label="@string/storage_limits_activity"
                 android:excludeFromRecents="true">
         </activity>
@@ -267,7 +267,7 @@
         </receiver>
 
         <activity android:name=".ui.ConfirmRateLimitActivity"
-                  android:theme="@android:style/Theme.Holo.Dialog">
+                  android:theme="@android:style/Theme.Dialog">
             <intent-filter>
                 <action android:name="com.android.mms.RATE_LIMIT_SURPASSED" />
                 <category android:name="android.intent.category.DEFAULT" />
