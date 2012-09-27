@@ -70,7 +70,7 @@
             android:visibility="gone"
             android:fadingEdge="none"
             android:layout_marginBottom="1dip"
-            android:cacheColorHint="@android:color/white"
+            android:cacheColorHint="@android:color/black"
             android:scrollbarAlwaysDrawVerticalTrack="false"
             android:scrollbarStyle="insideOverlay"
             android:paddingBottom="@dimen/input_text_height_adjusted"
