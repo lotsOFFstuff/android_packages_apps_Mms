@@ -16,7 +16,7 @@
 
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/QuickMessageContentlayout"
-    android:layout_width="fill_parent"
+    android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_gravity="center_horizontal|bottom"
     android:orientation="vertical" >
@@ -83,7 +83,7 @@
         android:layout_weight="1"
         android:fillViewport="true"
         android:minHeight="72dp"
-        android:background="#ff1e1e1e"
+        android:background="@color/quickmessage_body_dark_bg"
         android:paddingTop="4dp"
         android:paddingBottom="4dp" >
 
@@ -108,7 +108,7 @@
         android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#ff1e1e1e"
+        android:background="@color/quickmessage_body_dark_bg"
         android:paddingTop="4dp"
         android:paddingLeft="6dp"
         android:paddingBottom="2dp" >
@@ -139,6 +139,7 @@
             android:minHeight="@dimen/input_text_height"
             android:textColor="?android:attr/textColorPrimary"
             android:textColorHint="?android:attr/textColorTertiary"
+            android:textCursorDrawable = "@null"
             android:maxLines="3"
             android:inputType="textShortMessage|textAutoCorrect|textCapSentences|textMultiLine"
             android:imeOptions="actionSend|flagNoEnterAction"
