@@ -19,10 +19,8 @@
  */
 -->
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <!-- Storage Settings -->
-    <PreferenceCategory android:title="@string/pref_sms_storage_title"
-        android:key="pref_key_storage_settings">
+  <PreferenceCategory android:title="@string/pref_sms_storage_title"
+                      android:key="pref_key_storage_settings">
 <!--
         <Preference
             android:key="pref_key_mms_clear_history"
@@ -75,6 +73,12 @@
     <!-- MMS Settings -->
     <PreferenceCategory android:title="@string/pref_mms_settings_title"
         android:key="pref_key_mms_settings">
+
+        <CheckBoxPreference 
+            android:defaultValue="true"
+            android:key="pref_key_mms_group_mms"
+            android:summary="@string/pref_summary_mms_group_mms"
+            android:title="@string/pref_title_mms_group_mms" />
 
         <CheckBoxPreference
             android:defaultValue="false"
@@ -153,6 +157,12 @@
     <!-- QuickMessage settings -->
     <PreferenceCategory android:title="@string/pref_quickmessage">
         <CheckBoxPreference
+            android:key="pref_dark_theme"
+            android:title="@string/pref_dark_theme_title"
+            android:summary="@string/pref_dark_theme_summary"
+            android:defaultValue="false" />
+
+        <CheckBoxPreference
             android:key="pref_key_quickmessage"
             android:title="@string/pref_quickmessage_title"
             android:dependency="pref_key_enable_notifications"
@@ -173,12 +183,6 @@
             android:summary="@string/pref_close_all_summary"
             android:layout="?android:attr/preferenceLayoutChild"
             android:dependency="pref_key_quickmessage"
-            android:defaultValue="false" />
-
-        <CheckBoxPreference
-            android:key="pref_dark_theme"
-            android:title="@string/pref_dark_theme_title"
-            android:summary="@string/pref_dark_theme_summary"
             android:defaultValue="false" />
     </PreferenceCategory>
 

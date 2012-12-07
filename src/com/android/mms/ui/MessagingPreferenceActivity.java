@@ -1,7 +1,6 @@
 /*
  * Copyright (C) 2007-2008 Esmertec AG.
  * Copyright (C) 2007-2008 The Android Open Source Project
- * QuickMessage: Copyright (C) 2012 The CyanogenMod Project (DvTonder)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +17,9 @@
 
 package com.android.mms.ui;
 
-import com.android.mms.MmsApp;
-import com.android.mms.MmsConfig;
-import com.android.mms.R;
-
 import android.app.ActionBar;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -34,19 +28,23 @@ import android.os.Bundle;
 import android.preference.CheckBoxPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
-import android.preference.Preference.OnPreferenceClickListener;
+import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceCategory;
 import android.preference.PreferenceManager;
 import android.preference.PreferenceScreen;
-import android.preference.Preference.OnPreferenceChangeListener;
+import android.preference.Preference.OnPreferenceClickListener;
 import android.provider.SearchRecentSuggestions;
 import android.text.InputType;
-import android.provider.Settings;
+import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import com.android.mms.MmsApp;
+import com.android.mms.MmsConfig;
+import com.android.mms.R;
 import com.android.mms.templates.TemplatesListActivity;
+import com.android.mms.transaction.TransactionService;
 import com.android.mms.util.Recycler;
 
 /**
@@ -61,7 +59,6 @@ public class MessagingPreferenceActivity extends PreferenceActivity
     public static final String PRIORITY                 = "pref_key_mms_priority";
     public static final String READ_REPORT_MODE         = "pref_key_mms_read_reports";
     public static final String SMS_DELIVERY_REPORT_MODE = "pref_key_sms_delivery_reports";
-    public static final String SMS_SPLIT_COUNTER        = "pref_key_sms_split_counter";
     public static final String NOTIFICATION_ENABLED     = "pref_key_enable_notifications";
     public static final String NOTIFICATION_VIBRATE     = "pref_key_vibrate";
     public static final String NOTIFICATION_VIBRATE_WHEN= "pref_key_vibrateWhen";
@@ -69,26 +66,38 @@ public class MessagingPreferenceActivity extends PreferenceActivity
     public static final String AUTO_RETRIEVAL           = "pref_key_mms_auto_retrieval";
     public static final String RETRIEVAL_DURING_ROAMING = "pref_key_mms_retrieval_during_roaming";
     public static final String AUTO_DELETE              = "pref_key_auto_delete";
+    public static final String GROUP_MMS_MODE           = "pref_key_mms_group_mms";
+
+    // Emoji and Unicode
+    public static final String ENABLE_EMOJIS             = "pref_key_enable_emojis";
+    public static final String STRIP_UNICODE             = "pref_key_strip_unicode";
+
+    // Split sms
+    public static final String SMS_SPLIT_COUNTER        = "pref_key_sms_split_counter";
+
+    // Templates
     public static final String MANAGE_TEMPLATES         = "pref_key_templates_manage";
     public static final String SHOW_GESTURE             = "pref_key_templates_show_gesture";
     public static final String GESTURE_SENSITIVITY      = "pref_key_templates_gestures_sensitivity";
     public static final String GESTURE_SENSITIVITY_VALUE = "pref_key_templates_gestures_sensitivity_value";
+
+    // Timestamps
+    public static final String FULL_TIMESTAMP            = "pref_key_mms_full_timestamp";
+    public static final String SENT_TIMESTAMP            = "pref_key_mms_use_sent_timestamp";
+
+    // Vibrate pattern
     public static final String NOTIFICATION_VIBRATE_PATTERN = "pref_key_mms_notification_vibrate_pattern";
     public static final String NOTIFICATION_VIBRATE_PATTERN_CUSTOM = "pref_key_mms_notification_vibrate_pattern_custom";
     public static final String NOTIFICATION_VIBRATE_CALL ="pre_key_mms_notification_vibrate_call";
-    public static final String STRIP_UNICODE             = "pref_key_strip_unicode";
-    public static final String FULL_TIMESTAMP            = "pref_key_mms_full_timestamp";
-    public static final String SENT_TIMESTAMP            = "pref_key_mms_use_sent_timestamp";
-    public static final String ENABLE_EMOJIS             = "pref_key_enable_emojis";
+
+    // Keyboard input type
+    public static final String INPUT_TYPE                = "pref_key_mms_input_type";
 
     // QuickMessage
     public static final String QUICKMESSAGE_ENABLED      = "pref_key_quickmessage";
     public static final String QM_LOCKSCREEN_ENABLED     = "pref_key_qm_lockscreen";
     public static final String QM_CLOSE_ALL_ENABLED      = "pref_key_close_all";
     public static final String QM_DARK_THEME_ENABLED     = "pref_dark_theme";
-
-    // Keyboard input type
-    public static final String INPUT_TYPE                = "pref_key_mms_input_type";
 
     // Menu entries
     private static final int MENU_RESTORE_DEFAULTS    = 1;
@@ -98,13 +107,13 @@ public class MessagingPreferenceActivity extends PreferenceActivity
     private CheckBoxPreference mSmsSplitCounterPref;
     private Preference mMmsLimitPref;
     private Preference mMmsDeliveryReportPref;
+    private Preference mMmsGroupMmsPref;
     private Preference mMmsReadReportPref;
     private Preference mManageSimPref;
     private Preference mClearHistoryPref;
-    private CheckBoxPreference mMmsAutoRetrieval;
-    private CheckBoxPreference mMmsRetrievalDuringRoaming;
     private ListPreference mVibrateWhenPref;
     private CheckBoxPreference mEnableNotificationsPref;
+    private CheckBoxPreference mMmsAutoRetrievialPref;
     private Recycler mSmsRecycler;
     private Recycler mMmsRecycler;
     private Preference mManageTemplate;
@@ -113,16 +122,16 @@ public class MessagingPreferenceActivity extends PreferenceActivity
     private CharSequence[] mVibrateEntries;
     private CharSequence[] mVibrateValues;
 
+    // Keyboard input type
+    private ListPreference mInputTypePref;
+    private CharSequence[] mInputTypeEntries;
+    private CharSequence[] mInputTypeValues;
+
     // QuickMessage
     private CheckBoxPreference mEnableQuickMessagePref;
     private CheckBoxPreference mEnableQmLockscreenPref;
     private CheckBoxPreference mEnableQmCloseAllPref;
     private CheckBoxPreference mEnableQmDarkThemePref;
-
-    // Keyboard input type
-    private ListPreference mInputTypePref;
-    private CharSequence[] mInputTypeEntries;
-    private CharSequence[] mInputTypeValues;
 
     @Override
     protected void onCreate(Bundle icicle) {
@@ -152,22 +161,15 @@ public class MessagingPreferenceActivity extends PreferenceActivity
         mSmsDeliveryReportPref = findPreference("pref_key_sms_delivery_reports");
         mSmsSplitCounterPref = (CheckBoxPreference) findPreference("pref_key_sms_split_counter");
         mMmsDeliveryReportPref = findPreference("pref_key_mms_delivery_reports");
+        mMmsGroupMmsPref = findPreference("pref_key_mms_group_mms");
         mMmsReadReportPref = findPreference("pref_key_mms_read_reports");
         mMmsLimitPref = findPreference("pref_key_mms_delete_limit");
         mClearHistoryPref = findPreference("pref_key_mms_clear_history");
         mEnableNotificationsPref = (CheckBoxPreference) findPreference(NOTIFICATION_ENABLED);
+        mMmsAutoRetrievialPref = (CheckBoxPreference) findPreference(AUTO_RETRIEVAL);
         mVibrateWhenPref = (ListPreference) findPreference(NOTIFICATION_VIBRATE_WHEN);
         mManageTemplate = findPreference(MANAGE_TEMPLATES);
         mGestureSensitivity = (ListPreference) findPreference(GESTURE_SENSITIVITY);
-
-        // Get the MMS retrieval settings. Defaults to enabled with roaming disabled
-        ContentResolver resolver = getContentResolver();
-        mMmsAutoRetrieval = (CheckBoxPreference) findPreference(AUTO_RETRIEVAL);
-        mMmsAutoRetrieval.setChecked(Settings.System.getInt(resolver,
-                Settings.System.MMS_AUTO_RETRIEVAL, 1) == 1);
-        mMmsRetrievalDuringRoaming = (CheckBoxPreference) findPreference(RETRIEVAL_DURING_ROAMING);
-        mMmsRetrievalDuringRoaming.setChecked(Settings.System.getInt(resolver,
-                Settings.System.MMS_AUTO_RETRIEVAL_ON_ROAMING, 0) == 1); 
 
         // QuickMessage
         mEnableQuickMessagePref = (CheckBoxPreference) findPreference(QUICKMESSAGE_ENABLED);
@@ -235,15 +237,18 @@ public class MessagingPreferenceActivity extends PreferenceActivity
                 (PreferenceCategory)findPreference("pref_key_storage_settings");
             storageOptions.removePreference(findPreference("pref_key_mms_delete_limit"));
         } else {
-            if (!MmsConfig.getMMSDeliveryReportsEnabled()) {
-                PreferenceCategory mmsOptions =
+            PreferenceCategory mmsOptions =
                     (PreferenceCategory)findPreference("pref_key_mms_settings");
+            if (!MmsConfig.getMMSDeliveryReportsEnabled()) {
                 mmsOptions.removePreference(mMmsDeliveryReportPref);
             }
             if (!MmsConfig.getMMSReadReportsEnabled()) {
-                PreferenceCategory mmsOptions =
-                    (PreferenceCategory)findPreference("pref_key_mms_settings");
                 mmsOptions.removePreference(mMmsReadReportPref);
+            }
+            // If the phone's SIM doesn't know it's own number, disable group mms.
+            if (!MmsConfig.getGroupMmsEnabled() ||
+                    TextUtils.isEmpty(MessageUtils.getLocalNumber())) {
+                mmsOptions.removePreference(mMmsGroupMmsPref);
             }
         }
 
@@ -416,18 +421,21 @@ public class MessagingPreferenceActivity extends PreferenceActivity
             // Update the actual "enable dark theme" value that is stored in secure settings.
             enableQmDarkTheme(mEnableQmDarkThemePref.isChecked(), this);
 
-        } else if (preference == mMmsAutoRetrieval) {
-            // Update the value in Settings.System
-            Settings.System.putInt(getContentResolver(), Settings.System.MMS_AUTO_RETRIEVAL,
-                    mMmsAutoRetrieval.isChecked() ? 1 : 0);
-
-        } else if (preference == mMmsRetrievalDuringRoaming) {
-            // Update the value in Settings.System
-            Settings.System.putInt(getContentResolver(), Settings.System.MMS_AUTO_RETRIEVAL_ON_ROAMING,
-                    mMmsRetrievalDuringRoaming.isChecked() ? 1 : 0);
+        } else if (preference == mMmsAutoRetrievialPref) {
+            if (mMmsAutoRetrievialPref.isChecked()) {
+                startMmsDownload();
+            }
         }
 
         return super.onPreferenceTreeClick(preferenceScreen, preference);
+    }
+
+    /**
+     * Trigger the TransactionService to download any outstanding messages.
+     */
+    private void startMmsDownload() {
+        startService(new Intent(TransactionService.ACTION_ENABLE_AUTO_RETRIEVE, null, this,
+                TransactionService.class));
     }
 
     NumberPickerDialog.OnNumberSetListener mSmsLimitListener =
@@ -580,5 +588,18 @@ public class MessagingPreferenceActivity extends PreferenceActivity
             }
         }
         mInputTypePref.setSummary(R.string.pref_keyboard_unknown);
+    }
+
+    // For the group mms feature to be enabled, the following must be true:
+    //  1. the feature is enabled in mms_config.xml (currently on by default)
+    //  2. the feature is enabled in the mms settings page
+    //  3. the SIM knows its own phone number
+    public static boolean getIsGroupMmsEnabled(Context context) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        boolean groupMmsPrefOn = prefs.getBoolean(
+                MessagingPreferenceActivity.GROUP_MMS_MODE, true);
+        return MmsConfig.getGroupMmsEnabled() &&
+                groupMmsPrefOn &&
+                !TextUtils.isEmpty(MessageUtils.getLocalNumber());
     }
 }
