@@ -39,7 +39,6 @@ import com.android.mms.util.DraftCache;
 import com.android.mms.util.PduLoaderManager;
 import com.android.mms.util.RateController;
 import com.android.mms.util.SmileyParser;
-import com.android.mms.util.EmojiParser;
 import com.android.mms.util.ThumbnailManager;
 
 public class MmsApp extends Application {
@@ -95,7 +94,6 @@ public class MmsApp extends Application {
         RateController.init(this);
         LayoutManager.init(this);
         SmileyParser.init(this);
-        EmojiParser.init(this);
         MessagingNotification.init(this);
     }
 

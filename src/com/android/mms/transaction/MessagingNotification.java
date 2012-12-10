@@ -48,12 +48,9 @@ import android.media.AudioManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Handler;
-import android.os.Parcel;
-import android.os.Parcelable;
 import android.preference.PreferenceManager;
 import android.provider.Telephony.Mms;
 import android.provider.Telephony.Sms;
-import android.telephony.TelephonyManager;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
@@ -70,8 +67,6 @@ import com.android.mms.data.Conversation;
 import com.android.mms.data.WorkingMessage;
 import com.android.mms.model.SlideModel;
 import com.android.mms.model.SlideshowModel;
-import com.android.mms.quickmessage.QmMarkRead;
-import com.android.mms.quickmessage.QuickMessagePopup;
 import com.android.mms.ui.ComposeMessageActivity;
 import com.android.mms.ui.ConversationList;
 import com.android.mms.ui.MessageUtils;
@@ -96,7 +91,7 @@ public class MessagingNotification {
     private static final String TAG = LogTag.APP;
     private static final boolean DEBUG = false;
 
-    public static final int NOTIFICATION_ID = 123;
+    private static final int NOTIFICATION_ID = 123;
     public static final int MESSAGE_FAILED_NOTIFICATION_ID = 789;
     public static final int DOWNLOAD_FAILED_NOTIFICATION_ID = 531;
     /**
@@ -347,7 +342,7 @@ public class MessagingNotification {
         }
     }
 
-    public static final class NotificationInfo implements Parcelable {
+    private static final class NotificationInfo {
         public final Intent mClickIntent;
         public final String mMessage;
         public final CharSequence mTicker;
@@ -494,50 +489,6 @@ public class MessagingNotification {
             }
             return spannableStringBuilder;
         }
-
-        @Override
-        public int describeContents() {
-            return 0;
-        }
-
-        @Override
-        public void writeToParcel(Parcel arg0, int arg1) {
-            arg0.writeByte((byte) (mIsSms ? 1 : 0));
-            arg0.writeParcelable(mClickIntent, 0);
-            arg0.writeString(mMessage);
-            arg0.writeString(mSubject);
-            arg0.writeCharSequence(mTicker);
-            arg0.writeLong(mTimeMillis);
-            arg0.writeString(mTitle);
-            arg0.writeParcelable(mAttachmentBitmap, 0);
-            arg0.writeInt(mAttachmentType);
-            arg0.writeLong(mThreadId);
-        }
-
-        public NotificationInfo(Parcel in) {
-            mIsSms = in.readByte() == 1;
-            mClickIntent = in.readParcelable(Intent.class.getClassLoader());
-            mMessage = in.readString();
-            mSubject = in.readString();
-            mTicker = in.readCharSequence();
-            mTimeMillis = in.readLong();
-            mTitle = in.readString();
-            mAttachmentBitmap = in.readParcelable(Bitmap.class.getClassLoader());
-            mSender = null;
-            mAttachmentType = in.readInt();
-            mThreadId = in.readLong();
-        }
-
-        public static final Parcelable.Creator<NotificationInfo> CREATOR = new Parcelable.Creator<NotificationInfo>() {
-            public NotificationInfo createFromParcel(Parcel in) {
-                return new NotificationInfo(in);
-            }
-
-            public NotificationInfo[] newArray(int size) {
-                return new NotificationInfo[size];
-            }
-        };
-
     }
 
     // Return a formatted string with all the sender names separated by commas.
@@ -955,10 +906,6 @@ public class MessagingNotification {
                 vibrateWhen = context.getString(R.string.prefDefault_vibrateWhen);
             }
 
-            TelephonyManager mTM = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-            boolean callStateIdle = mTM.getCallState() == TelephonyManager.CALL_STATE_IDLE;
-            boolean vibrateOnCall = sp.getBoolean(MessagingPreferenceActivity.NOTIFICATION_VIBRATE_CALL, true);
-
             boolean vibrateAlways = vibrateWhen.equals("always");
             boolean vibrateSilent = vibrateWhen.equals("silent");
             AudioManager audioManager =
@@ -966,85 +913,25 @@ public class MessagingNotification {
             boolean nowSilent =
                 audioManager.getRingerMode() == AudioManager.RINGER_MODE_VIBRATE;
 
-            if ((vibrateAlways || vibrateSilent && nowSilent) && (vibrateOnCall || (!vibrateOnCall && callStateIdle))) {
-                /* WAS: notificationdefaults |= Notification.DEFAULT_VIBRATE;*/
-                String mVibratePattern = "custom".equals(sp.getString(MessagingPreferenceActivity.NOTIFICATION_VIBRATE_PATTERN, null))
-                        ? sp.getString(MessagingPreferenceActivity.NOTIFICATION_VIBRATE_PATTERN_CUSTOM, "0,1200")
-                                : sp.getString(MessagingPreferenceActivity.NOTIFICATION_VIBRATE_PATTERN, "0,1200");
-                        if(!mVibratePattern.equals("")) {
-                            noti.setVibrate(parseVibratePattern(mVibratePattern));
-                        } else {
-                            defaults |= Notification.DEFAULT_VIBRATE;
-                        }
+            if (vibrateAlways || vibrateSilent && nowSilent) {
+                defaults |= Notification.DEFAULT_VIBRATE;
             }
 
             String ringtoneStr = sp.getString(MessagingPreferenceActivity.NOTIFICATION_RINGTONE,
                     null);
             noti.setSound(TextUtils.isEmpty(ringtoneStr) ? null : Uri.parse(ringtoneStr));
-            if (DEBUG) {
-                Log.d(TAG, "updateNotification: new message, adding sound to the notification");
-            }
+            Log.d(TAG, "updateNotification: new message, adding sound to the notification");
         }
 
-        // Set light defaults
         defaults |= Notification.DEFAULT_LIGHTS;
+
         noti.setDefaults(defaults);
 
         // set up delete intent
         noti.setDeleteIntent(PendingIntent.getBroadcast(context, 0,
                 sNotificationOnDeleteIntent, 0));
 
-        // See if QuickMessage pop-up support is enabled in preferences
-        boolean qmPopupEnabled = MessagingPreferenceActivity.getQuickMessageEnabled(context);
-
-        // Set up the QuickMessage intent
-        Intent qmIntent = null;
-        if (mostRecentNotification.mIsSms) {
-            // QuickMessage support is only for SMS
-            qmIntent = new Intent();
-            qmIntent.setClass(context, QuickMessagePopup.class);
-            qmIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP |
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
-            qmIntent.putExtra(QuickMessagePopup.SMS_FROM_NAME_EXTRA, mostRecentNotification.mSender.getName());
-            qmIntent.putExtra(QuickMessagePopup.SMS_FROM_NUMBER_EXTRA, mostRecentNotification.mSender.getNumber());
-            qmIntent.putExtra(QuickMessagePopup.SMS_NOTIFICATION_OBJECT_EXTRA, mostRecentNotification);
-        }
-
-        // Start getting the notification ready
         final Notification notification;
-
-        if (messageCount == 1 || uniqueThreadCount == 1) {
-            // Add the Quick Reply action only if the pop-up won't be shown already
-            if (!qmPopupEnabled && qmIntent != null) {
-
-                // This is a QR, we should show the keyboard when the user taps to reply
-                qmIntent.putExtra(QuickMessagePopup.QR_SHOW_KEYBOARD_EXTRA, true);
-
-                // Create the Quick reply pending intent and add it to the notification
-                CharSequence qmText = context.getText(R.string.qm_quick_reply);
-                PendingIntent qmPendingIntent = PendingIntent.getActivity(context, 0, qmIntent,
-                        PendingIntent.FLAG_UPDATE_CURRENT);
-                noti.addAction(R.drawable.ic_reply, qmText, qmPendingIntent);
-            }
-
-            // Add the Call action
-            CharSequence callText = context.getText(R.string.menu_call);
-            Intent callIntent = new Intent(Intent.ACTION_CALL);
-            callIntent.setData(mostRecentNotification.mSender.getPhoneUri());
-            PendingIntent callPendingIntent = PendingIntent.getActivity(context, 0, callIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT);
-            noti.addAction(R.drawable.ic_menu_call, callText, callPendingIntent);
-
-            // Add the 'Mark as read' action
-            CharSequence markReadText = context.getText(R.string.qm_mark_read);
-            Intent mrIntent = new Intent();
-            mrIntent.setClass(context, QmMarkRead.class);
-            mrIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
-            mrIntent.putExtra(QmMarkRead.SMS_THREAD_ID, mostRecentNotification.mThreadId);
-            PendingIntent mrPendingIntent = PendingIntent.getActivity(context, 0, mrIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT);
-            noti.addAction(R.drawable.ic_menu_done_holo_dark, markReadText, mrPendingIntent);
-        }
 
         if (messageCount == 1) {
             // We've got a single message
@@ -1142,20 +1029,6 @@ public class MessagingNotification {
             }
         }
 
-        // Trigger the QuickMessage pop-up activity if enabled
-        // But don't show the QuickMessage if the user is in a call or the phone is ringing
-        if (qmPopupEnabled && qmIntent != null) {
-            TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-            if (tm.getCallState() == TelephonyManager.CALL_STATE_IDLE && !ConversationList.mIsRunning && !ComposeMessageActivity.mIsRunning) {
-                // Since a QM Popup may wake and unlock we need to prevent the light from being dismissed
-                notification.flags |= Notification.FLAG_FORCE_LED_SCREEN_OFF;
-
-                // Show the popup
-                context.startActivity(qmIntent);
-            }
-        }
-
-        // Post the notification
         nm.notify(NOTIFICATION_ID, notification);
     }
 
@@ -1479,37 +1352,5 @@ public class MessagingNotification {
         } finally {
             cursor.close();
         }
-    }
-
-    // Parse the user provided custom vibrate pattern into a long[]
-    public static long[] parseVibratePattern(String stringPattern) {
-        ArrayList<Long> arrayListPattern = new ArrayList<Long>();
-        Long l;
-        String[] splitPattern = stringPattern.split(",");
-        int VIBRATE_PATTERN_MAX_SECONDS = 60000;
-        int VIBRATE_PATTERN_MAX_PATTERN = 100;
-
-        for (int i = 0; i < splitPattern.length; i++) {
-            try {
-                l = Long.parseLong(splitPattern[i].trim());
-            } catch (NumberFormatException e) {
-                return null;
-            }
-            if (l > VIBRATE_PATTERN_MAX_SECONDS) {
-                return null;
-            }
-            arrayListPattern.add(l);
-        }
-
-        int size = arrayListPattern.size();
-        if (size > 0 && size < VIBRATE_PATTERN_MAX_PATTERN) {
-            long[] pattern = new long[size];
-            for (int i = 0; i < pattern.length; i++) {
-                pattern[i] = arrayListPattern.get(i);
-            }
-            return pattern;
-        }
-
-        return null;
     }
 }
